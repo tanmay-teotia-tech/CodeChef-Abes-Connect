@@ -79,10 +79,18 @@ export function saveRegistration(registration) {
  * Check if a user (by email) is already registered for a given event (by id).
  */
 export function isDuplicateRegistration(email, eventId) {
-  const registrations = getRegistrations();
-  return registrations.some(
-    (r) =>
-      r.email.toLowerCase() === email.toLowerCase() &&
-      String(r.eventId) === String(eventId)
-  );
+  try {
+    const registrations = getRegistrations();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    return registrations.some((r) => {
+      if (!r || typeof r !== "object" || typeof r.email !== "string") return false;
+      return (
+        r.email.toLowerCase() === normalizedEmail &&
+        String(r.eventId) === String(eventId)
+      );
+    });
+  } catch {
+    return false;
+  }
 }

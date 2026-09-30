@@ -21,7 +21,7 @@ export default function Navbar() {
       <div className="container navbar__inner">
         {/* Logo */}
         <Link to="/" className="navbar__logo" onClick={closeMenu}>
-          <span className="navbar__logo-name">&lt;/&gt; CodeChef</span>
+          <span className="navbar__logo-name">&lt;/&gt; CodeChef ABES Connect</span>
           <span className="navbar__logo-sub">ABES Engineering College, Ghaziabad</span>
         </Link>
 

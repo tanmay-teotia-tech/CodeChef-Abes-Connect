@@ -2,7 +2,6 @@
 // Reusable event card used on both the Home and Events pages.
 // Props:
 //   event  — one event object from events.js
-//   onRegister — callback when the Register button is clicked
 
 import { Link } from "react-router-dom";
 import { formatDate } from "../utils/helpers";
@@ -37,9 +36,9 @@ export default function EventCard({ event }) {
 
         {/* Date, time, venue */}
         <div className="event-card__meta">
-          <span>📅 {formatDate(event.date)}</span>
-          <span>🕐 {event.time}</span>
-          <span>📍 {event.venue}</span>
+          <span><span aria-hidden="true">📅</span> {formatDate(event.date)}</span>
+          <span><span aria-hidden="true">🕐</span> {event.time}</span>
+          <span><span aria-hidden="true">📍</span> {event.venue}</span>
         </div>
 
         {/* Short description — clamped to 3 lines in CSS */}

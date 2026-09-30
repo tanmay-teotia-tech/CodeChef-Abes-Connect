@@ -12,7 +12,7 @@ export default function Footer() {
         <div className="footer__inner">
           {/* Brand side */}
           <div>
-            <div className="footer__brand-name">&lt;/&gt; CodeChef</div>
+            <div className="footer__brand-name">&lt;/&gt; CodeChef ABES Connect</div>
             <div className="footer__brand-college">
               ABES Engineering College, Ghaziabad
             </div>
@@ -38,7 +38,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="footer__bottom">
-          © {CURRENT_YEAR} CodeChef Chapter — ABES Engineering College &nbsp;|&nbsp;
+          © {CURRENT_YEAR} CodeChef ABES Connect &nbsp;|&nbsp;
           Built with ❤️ by club members
         </div>
       </div>

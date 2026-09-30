@@ -6,7 +6,7 @@
 //  - localStorage save via helpers
 //  - Success banner after submit
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import events from "../data/events";
 import { formatDate, saveRegistration, isDuplicateRegistration } from "../utils/helpers";
@@ -73,6 +73,8 @@ const EMPTY_FORM = {
   handle: "",
 };
 
+const FIELD_ORDER = ["eventId", "name", "email", "college", "year", "phone", "handle"];
+
 export default function Register() {
   const [searchParams] = useSearchParams();
 
@@ -94,6 +96,8 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [duplicateMsg, setDuplicateMsg] = useState("");
+  const [saveErrorMsg, setSaveErrorMsg] = useState("");
+  const fieldRefs = useRef({});
 
   // The currently selected event object (for the info card above the form)
   const selectedEvent = events.find((e) => String(e.id) === String(fields.eventId));
@@ -104,19 +108,27 @@ export default function Register() {
     setFields((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
     setDuplicateMsg("");
+    setSaveErrorMsg("");
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setDuplicateMsg("");
+    setSaveErrorMsg("");
 
     // 1. Validate all fields
     const newErrors = validate(fields);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      // Scroll to first error field
-      const first = document.querySelector(".field-error");
-      if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+      requestAnimationFrame(() => {
+        const firstInvalidField = FIELD_ORDER.find((fieldName) => newErrors[fieldName]);
+        const targetField = firstInvalidField ? fieldRefs.current[firstInvalidField] : null;
+
+        if (targetField) {
+          targetField.scrollIntoView({ behavior: "smooth", block: "center" });
+          targetField.focus({ preventScroll: true });
+        }
+      });
       return;
     }
 
@@ -135,17 +147,25 @@ export default function Register() {
     await new Promise((r) => setTimeout(r, 700));
 
     // 4. Save to localStorage
-    saveRegistration({
+    const isSaved = saveRegistration({
       ...fields,
       eventName: selectedEvent?.name || "",
       registeredAt: new Date().toISOString(),
     });
 
+    if (!isSaved) {
+      setSubmitting(false);
+      setSaveErrorMsg(
+        "We could not save your registration on this device. Please check browser storage settings and try again."
+      );
+      return;
+    }
+
     setSubmitting(false);
     setSuccess(true);
 
     // 5. Reset form
-    setFields(EMPTY_FORM);
+    setFields({ ...EMPTY_FORM, eventId: initialEventId });
     setErrors({});
   }
 
@@ -163,31 +183,25 @@ export default function Register() {
         <div className="container register-page__inner">
 
           {/* ── Left column: selected event info + context ── */}
-          <div>
+          <div className="register-page__info">
             {/* Show selected event card when an event is chosen */}
             {selectedEvent ? (
               <div className="register-event-info">
                 <div className="register-event-info__label">// registering_for</div>
                 <div className="register-event-info__name">{selectedEvent.name}</div>
                 <div className="register-event-info__meta">
-                  <span>📅 {formatDate(selectedEvent.date)}</span>
-                  <span>🕐 {selectedEvent.time}</span>
-                  <span>📍 {selectedEvent.venue}</span>
+                  <span><span aria-hidden="true">📅</span> {formatDate(selectedEvent.date)}</span>
+                  <span><span aria-hidden="true">🕐</span> {selectedEvent.time}</span>
+                  <span><span aria-hidden="true">📍</span> {selectedEvent.venue}</span>
                 </div>
               </div>
             ) : (
               <div className="register-event-info">
                 <div className="register-event-info__label">// select_event</div>
-                <div
-                  className="register-event-info__name"
-                  style={{ opacity: 0.5 }}
-                >
+                <div className="register-event-info__name register-event-info__name--muted">
                   No event selected yet
                 </div>
-                <div
-                  className="register-event-info__meta"
-                  style={{ opacity: 0.5 }}
-                >
+                <div className="register-event-info__meta register-event-info__meta--muted">
                   Choose an event from the dropdown to see its details here.
                 </div>
               </div>
@@ -216,8 +230,7 @@ export default function Register() {
                 // need_help?
               </p>
               <p>
-                Having trouble registering? Reach out to any club representative
-                or drop by our notice board in Block C near Computer Lab 3.
+                Having trouble registering? Reach out to any club representative.
               </p>
               <p style={{ marginTop: "0.6rem" }}>
                 Browse{" "}
@@ -273,13 +286,46 @@ export default function Register() {
                     {duplicateMsg}
                   </div>
                 )}
+                {saveErrorMsg && (
+                  <div className="error-banner" role="alert">
+                    ⚠️ {saveErrorMsg}
+                  </div>
+                )}
 
                 <form onSubmit={handleSubmit} noValidate>
+
+                  {/* Event selection — dropdown */}
+                  <div className="form-group">
+                    <label htmlFor="reg-event">Event</label>
+                    <select
+                      ref={(node) => { fieldRefs.current.eventId = node; }}
+                      id="reg-event"
+                      name="eventId"
+                      value={fields.eventId}
+                      onChange={handleChange}
+                      className={`${errors.eventId ? "error " : ""}${!fields.eventId ? "is-placeholder" : ""}`.trim()}
+                      aria-describedby={errors.eventId ? "reg-event-error" : undefined}
+                      aria-invalid={Boolean(errors.eventId)}
+                    >
+                      <option value="">Select an event</option>
+                      {events.map((ev) => (
+                        <option key={ev.id} value={String(ev.id)}>
+                          {ev.name} — {formatDate(ev.date)}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.eventId && (
+                      <span id="reg-event-error" className="field-error" role="alert">
+                        ⚠ {errors.eventId}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Full Name */}
                   <div className="form-group">
                     <label htmlFor="reg-name">Full Name</label>
                     <input
+                      ref={(node) => { fieldRefs.current.name = node; }}
                       id="reg-name"
                       type="text"
                       name="name"
@@ -301,6 +347,7 @@ export default function Register() {
                   <div className="form-group">
                     <label htmlFor="reg-email">Email Address</label>
                     <input
+                      ref={(node) => { fieldRefs.current.email = node; }}
                       id="reg-email"
                       type="email"
                       name="email"
@@ -322,6 +369,7 @@ export default function Register() {
                   <div className="form-group">
                     <label htmlFor="reg-college">College Name</label>
                     <input
+                      ref={(node) => { fieldRefs.current.college = node; }}
                       id="reg-college"
                       type="text"
                       name="college"
@@ -343,11 +391,12 @@ export default function Register() {
                   <div className="form-group">
                     <label htmlFor="reg-year">Year of Study</label>
                     <select
+                      ref={(node) => { fieldRefs.current.year = node; }}
                       id="reg-year"
                       name="year"
                       value={fields.year}
                       onChange={handleChange}
-                      className={errors.year ? "error" : ""}
+                      className={`${errors.year ? "error " : ""}${!fields.year ? "is-placeholder" : ""}`.trim()}
                       aria-describedby={errors.year ? "reg-year-error" : undefined}
                       aria-invalid={Boolean(errors.year)}
                     >
@@ -368,6 +417,7 @@ export default function Register() {
                   <div className="form-group">
                     <label htmlFor="reg-phone">Phone Number</label>
                     <input
+                      ref={(node) => { fieldRefs.current.phone = node; }}
                       id="reg-phone"
                       type="tel"
                       name="phone"
@@ -385,32 +435,6 @@ export default function Register() {
                     )}
                   </div>
 
-                  {/* Event selection — dropdown */}
-                  <div className="form-group">
-                    <label htmlFor="reg-event">Event</label>
-                    <select
-                      id="reg-event"
-                      name="eventId"
-                      value={fields.eventId}
-                      onChange={handleChange}
-                      className={errors.eventId ? "error" : ""}
-                      aria-describedby={errors.eventId ? "reg-event-error" : undefined}
-                      aria-invalid={Boolean(errors.eventId)}
-                    >
-                      <option value="">Select an event</option>
-                      {events.map((ev) => (
-                        <option key={ev.id} value={String(ev.id)}>
-                          {ev.name} — {formatDate(ev.date)}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.eventId && (
-                      <span id="reg-event-error" className="field-error" role="alert">
-                        ⚠ {errors.eventId}
-                      </span>
-                    )}
-                  </div>
-
                   {/* CodeChef Handle — clearly labelled optional */}
                   <div className="form-group">
                     <label htmlFor="reg-handle">
@@ -418,6 +442,7 @@ export default function Register() {
                       <span className="optional-label">(optional)</span>
                     </label>
                     <input
+                      ref={(node) => { fieldRefs.current.handle = node; }}
                       id="reg-handle"
                       type="text"
                       name="handle"
